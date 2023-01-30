@@ -4,6 +4,7 @@ import WinLosses from './gui/WinLosses.vue';
 import Wins from './gui/Wins.vue';
 import Menu from './gui/Menu.vue';
 import Results from './gui/Results.vue';
+import WaitingPlayer from './gui/WaitingPlayer.vue';
 import ChoiceButtons from './gui/ChoiceButtons.vue';
 
 import LoadAll3DAssets from '../core/assetMananger';
@@ -21,8 +22,14 @@ import { CPURandomChoice } from '../globals/utils';
 import { CalculateMatchResults } from '../core/gameService';
 import Player from '../classes/Player';
 import useGameStore from '../stores/game';
+import { ref } from 'vue';
+import { playTurn, waitTurn, resolveGame } from '../core/multiplayerService';
 
 const GameData = useGameStore();
+
+const currentSelectedChoice = ref<Choices>();
+const secondPlayerChoice = ref<Choices>();
+const waitingPlayer = ref<boolean>(false);
 
 const { ROCK } = Choices;
 const scene = new THREE.Scene();
@@ -48,13 +55,39 @@ const loop = (time: number): void => {
 };
 
 const play = (choice: Choices): void => {
-  PlayerOne.play(choice);
-  PlayerTwo.play(CPURandomChoice());
+  if (!GameData.multiplayer) {
+    PlayerOne.play(choice);
+    PlayerTwo.play(CPURandomChoice());
+  } else {
+    if (waitingPlayer.value) return;
+    waitingPlayer.value = true;
+    currentSelectedChoice.value = choice;
+    playTurn(currentSelectedChoice.value);
+  }
+};
+
+
+const watchMultiplayer = () => {
+  if (!GameData.multiplayer) return;
+  waitTurn((beChoice: Choices) => {
+    console.log('broadcast', beChoice);
+    secondPlayerChoice.value = beChoice;
+  });
+
+  resolveGame(() => {
+    waitingPlayer.value = false;
+    if (secondPlayerChoice.value) {
+      PlayerOne.play(currentSelectedChoice.value as Choices);
+      PlayerTwo.play(secondPlayerChoice.value as Choices);
+      currentSelectedChoice.value = undefined; 
+      secondPlayerChoice.value = undefined;
+    }
+  });
 };
 
 const onFinish = () => {
   const result = CalculateMatchResults(PlayerOne.choice as Choices, PlayerTwo.choice as Choices);
-  let sound : any = result > 0 ? Sounds.hit : Sounds.miss;
+  let sound: any = result > 0 ? Sounds.hit : Sounds.miss;
   if (!result) sound = undefined;
   playSound(sound);
   GameData.setMatch(result);
@@ -86,7 +119,8 @@ document.body.appendChild(renderer.domElement);
   <div v-if="GameData.playing">
     <Wins :align="Alignment.LEFT" :type="PlayerType.YOU" :amount="GameData.wins" />
     <Wins :align="Alignment.RIGHT" :type="PlayerType.FOE" :amount="GameData.losses" />
-    <ChoiceButtons :play="play" />
+    <WaitingPlayer v-if="waitingPlayer" />
+    <ChoiceButtons :init="watchMultiplayer" :transparent="waitingPlayer" :play="play" />
   </div>
   <Results :restart="restart" v-if="GameData.matchResult" :result="GameData.matchResult" />
   <WinLosses v-if="GameData.results" />

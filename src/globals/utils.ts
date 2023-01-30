@@ -36,3 +36,8 @@ export const getResults = () => {
   const losses = Number(localStorage.getItem('totallosses')) || 0;
   return { wins, losses };
 };
+
+
+export const isBoolean: Function =(value: any): boolean => {
+  return value === true || value === false;
+}

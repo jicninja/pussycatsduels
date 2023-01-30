@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Results, Sounds } from '../../globals/constants';
 import { playSound } from '../../core/soundManager';
+import { endMultiplayer } from '../../core/multiplayerService';
 
 const { WIN, LOSE } = Results;
 const props = withDefaults(
@@ -11,6 +12,7 @@ const props = withDefaults(
   { result: undefined, restart: () => {} },
 );
 
+endMultiplayer();
 playSound(props.result === WIN ? Sounds.win : Sounds.lose);
 
 </script>

@@ -53,6 +53,12 @@ export enum Sounds {
   lose = 'lose',
 }
 
+export enum MultiplayerEvent {
+  play = 'play',
+  roomChange = 'roomChange',
+  roundPlayed = 'roundPlayed',
+}
+
 export type SoundAssets = {
   [key in Sounds]?: any
 };
